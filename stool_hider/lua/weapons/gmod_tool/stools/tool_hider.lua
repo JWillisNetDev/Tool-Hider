@@ -8,7 +8,7 @@ TOOL.ClientConVar = {
 }
 
 // Initialization Stuff //
-hidden_entities = hidden_entities or { }
+hidden_entities = { }
 
 // Tool Functionality Stuff //
 
@@ -20,25 +20,27 @@ function contains( tbl, trg )
 end
 
 if CLIENT then
-	function printHidden( )
-		for k, v in pairs( hidden_entities ) do
-			print( k.." : "..v:GetModel() )
-		end
-	end
-
-	concommand.Add( "tool_hider_printhidden", function( )
-		for k, v in pairs( hidden_entities ) do
+	concommand.Add( "tool_hider_printhidden", function( ply )
+		net.Start( "printhidden" )
+		net.SendToServer()
+	end )
+	
+	net.Receive( "printhidden", function( bits )
+		local tbl = net.ReadTable()
+		for k, v in pairs( tbl ) do
 			print( k.." : "..v:GetModel() )
 		end
 	end )
 end
 
 if SERVER then
-	function TOOL:SetEntityHidden( ent, ply )
-		if contains( hidden_entities, ent ) then return end
-		table.insert( hidden_entities, ent )
-		
-	end
+	util.AddNetworkString( "printhidden" )
+	
+	net.Receive( "printhidden", function( bits, ply ) 
+		net.Start( "printhidden" )
+			net.WriteTable( hidden_entities )
+		net.Send( ply )
+	end )
 end
 
 // Tool Handling Stuff //
@@ -58,8 +60,10 @@ function TOOL:LeftClick( trace )
 	
 	local ent = trace.Entity
 	local ply = self:GetOwner()
-
+	
 	self:SetEntityHidden( ent, ply )
+	
+	return true
 end
 
 function TOOL:RightClick( trace )
